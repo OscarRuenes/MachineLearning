@@ -39,15 +39,17 @@ def extract_data(data_str: List[str]) -> Tuple[Tuple[int, ...], ...]:
         header_index = i
         break
         
-    num_data_instances = len(data_str) - header_index - 1   #number of instances + header
+    num_data_instances = len(data_str) - header_index - 1   #number of instances
     data_instances = tuple()
-    for i in range(header_index + 1, num_data_instances + header_index + 1):  #runs from 1 to number of instances + 1 - 1 = number of instances, skips over header
+    for i in range(header_index + 1, num_data_instances + header_index + 1):  #runs from header index to eof
         if (data_str[i] == ""): 
             continue
         data_instance_str = data_str[i].split()
 
         data_instance = tuple(map(int, data_instance_str))
         data_instances = data_instances + (data_instance,)
+
+    print(len(data_instances))
     return data_instances
 
 
