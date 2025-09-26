@@ -32,13 +32,19 @@ except:
 #Input: takes a list of strings, of the form 1\t0\t...\n1\t0... where each line represents a data instance and the whole string represents the data set
 #Output: a tuple of tuples, each element tuple containing a data instance
 def extract_data(data_str: List[str]) -> Tuple[Tuple[int, ...], ...]:
-    num_data_instances = len(data_str)      #number of instances + header
+    header_index = 0
+    for i in range(0, len(data_str)):
+        if data_str[i].split() == [] or data_str[i].split() is None:
+            continue
+        header_index = i
+        break
+        
+    num_data_instances = len(data_str) - header_index - 1   #number of instances + header
     data_instances = tuple()
-    for i in range(1, num_data_instances):  #runs from 1 to number of instances + 1 - 1 = number of instances, skips over header
+    for i in range(header_index + 1, num_data_instances + header_index + 1):  #runs from 1 to number of instances + 1 - 1 = number of instances, skips over header
         if (data_str[i] == ""): 
             continue
         data_instance_str = data_str[i].split()
-        
 
         data_instance = tuple(map(int, data_instance_str))
         data_instances = data_instances + (data_instance,)
@@ -141,7 +147,11 @@ def evaluate_classifier(bayes_classifier: List[List[Tuple[int, int]]], data_inst
 
 def main():
     #Get labels and data
-    labels = training_data_lines[0].split()
+    for i in range(0, len(training_data_lines)):
+        if training_data_lines[i].split() == [] or training_data_lines[i].split() is None:
+            continue
+        labels = training_data_lines[i].split()
+        break
     training_data = extract_data(training_data_lines)
     test_data = extract_data(test_data_lines)
     
