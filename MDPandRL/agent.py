@@ -12,6 +12,10 @@ import numpy as np
 
 FORWARD_ACCEL = 1
 BACKWARD_ACCEL = 0
+X_STEP = 2
+X_DOT_STEP = 0.1
+THETA_STEP = 0.1
+THETA_DOT_STEP = 0.25
 
 
 class QLearningAgent:
@@ -36,6 +40,8 @@ class QLearningAgent:
         random.seed(11)
         np.random.seed(11)
         # you may add your code for initialization here, e.g., the Q-table
+        #we will have q_table such that an entry in the queue table is (state_tuple, action) -> real Q value
+        self.q_table = dict()
         pass
 
     def reset(self):
@@ -58,7 +64,9 @@ class QLearningAgent:
             action = random.sample([FORWARD_ACCEL, BACKWARD_ACCEL], 1)[0]
         else:
             # fill your code here to get an action from your agent
-            action = None
+            state = self.discretize_state(x, x_dot, theta, theta_dot)
+            action = FORWARD_ACCEL if self.get_q(state, FORWARD_ACCEL) >= self.get_q(state, BACKWARD_ACCEL) else BACKWARD_ACCEL
+            
         return action
 
     def update_Q(self, prev_state, prev_action, cur_state, reward):
@@ -76,9 +84,24 @@ class QLearningAgent:
         :return:
         """
         # fill your code here to update your Q-table
-        raise NotImplementedError
+        prev_state_disc = self.discretize_state(*prev_state)
+        cur_state_disc = self.discretize_state(*cur_state)
+        old_q = self.get_q(prev_state_disc, prev_action)
+        new_q = (1 - self.lr) * old_q + self.lr * (reward + self.gamma * max(self.get_q(cur_state_disc, a) for a in [FORWARD_ACCEL, BACKWARD_ACCEL]))
+        self.q_table[(prev_state_disc, prev_action)] = new_q
+        pass
 
     # you may add more methods here for your needs. E.g., methods for discretizing the variables.
+    def discretize_state(self, x, x_dot, theta, theta_dot):
+        return (round(x / X_STEP) * X_STEP,
+            round(x_dot / X_DOT_STEP) * X_DOT_STEP,
+            round(theta / THETA_STEP) * THETA_STEP,
+            round(theta_dot / THETA_DOT_STEP) * THETA_DOT_STEP)
+    
+    def get_q(self, state, action):
+        return self.q_table.get((state, action), 0.0)
+
+
 
 
 if __name__ == '__main__':
