@@ -41,18 +41,18 @@ class NeuralNetworkNode:
     def __init__(self, num_inputs: int):
         self.num_inputs = num_inputs
         self.weights = np.zeros(num_inputs)
-        self.bias = 1.0
+        self.bias = 0
 
     def activate(self, inputs: np.ndarray) -> float:
-        z = np.dot(self.weights, inputs) + self.bias
+        z = np.dot(self.weights, inputs) + 1 * self.bias
         return self.sigmoid(z)
     
     def sigmoid(self, x):
         return 1 / (1 + np.exp(-x))
     
     def update(self, new_weights, new_bias):
-        self.weights = new_weights
-        self.bias = new_bias
+        self.weights -= new_weights
+        self.bias -= new_bias
     
 class NeuralNetwork:
     def __init__(self, num_of_inputs: int, num_hidden_layers: int, num_hidden_nodes: int, learning_rate: float):
@@ -80,7 +80,6 @@ class NeuralNetwork:
 
         # Output layer
         layers.append([NeuralNetworkNode(prev_inputs)])
-        layers[-1][0].bias = 0
 
         print(f"Created a nn with {len(layers)} layers with {len(layers[0])} nodes in each hidden layer")
         return layers
@@ -98,24 +97,57 @@ class NeuralNetwork:
         
     def back_propagation(self, actual_output: float):
         output_delta = self.output_layer_update(actual_output)
+        self.hidden_layer_update(np.array([output_delta]))
+
+
 
     def output_layer_update(self, actual_output: float) -> float:
         output_layer = self.num_layers
-        assert self.layer_inputs[output_layer].shape[0] == 1
+        
         activation = self.layer_inputs[output_layer][0]
         delta = activation * (1 - activation) * (activation - actual_output)
 
         output_node = self.layers[output_layer - 1][0]
 
-        new_weight: np.ndarray = np.zeros(output_node.num_inputs, dtype=float)
+        weight_update: np.ndarray = np.zeros(output_node.num_inputs, dtype=float)
         for i in range(0,output_node.num_inputs):
-            new_weight[i] = output_node.weights[i] - self.learning_rate * delta * self.layer_inputs[output_layer-1][i]
-
-        new_bias = output_node.bias - self.learning_rate * delta
-        output_node.update(new_weight, new_bias)
+            weight_update[i] = self.learning_rate * delta * self.layer_inputs[output_layer-1][i]
+        
+        bias_update = self.learning_rate * delta
+        
+        output_node.update(weight_update, bias_update)
 
         return delta
 
+    def hidden_layer_update(self, output_layer_deltas: np.ndarray):
+        next_layer_deltas = output_layer_deltas
+        
+        for i in range(self.num_hidden_layers - 1, -1, -1):
+            new_deltas = np.zeros(self.num_hidden_nodes, dtype=float)
+
+            for j in range(0, self.num_hidden_nodes):
+                current_node: NeuralNetworkNode = self.layers[i][j]
+                delta: float = 0.0
+
+                for k in range(0, next_layer_deltas.shape[0]):
+                    prev_delta = next_layer_deltas[k]
+                    weight = self.layers[i+1][k].weights[j]
+                    delta += prev_delta * weight
+
+                activation = self.layer_inputs[i+1][j]
+                delta = delta * activation * (1 - activation)
+
+                weight_update: np.ndarray = np.zeros(current_node.num_inputs, dtype=float)
+                for l in range(0,current_node.num_inputs):
+                    weight_update[l] = round(self.learning_rate * delta * self.layer_inputs[i][l], 4)
+                bias_update = round(self.learning_rate * delta, 4)
+                current_node.update(weight_update, bias_update)
+
+                new_deltas[j] = delta
+            next_layer_deltas = new_deltas
+        
+        return 
+                
 class NN_Error:
     def __init__(self):
         self.sum = 0
@@ -130,7 +162,7 @@ class NN_Error:
         self.num_of_instances = 0
 
     def get(self):
-        return 0.5 * self.sum * 1 / self.num_of_instances
+        return self.sum * 1 / self.num_of_instances
 
 def main():
     if len(vars(args)) != 6:
@@ -146,20 +178,41 @@ def main():
 
     training_instances: List[List[float]] = [[float(x) for x in line[0:-1]] for line in training_data_lines[1:]]
     np_training_instances = np.array(training_instances, dtype=float)
-    class_instances: List[float] = [float(line[-1]) for line in training_data_lines[1:]]
-    
-    print(np_training_instances.shape)
-    num_of_instances = np_training_instances.shape[0]
+    training_class_instances: List[float] = [float(line[-1]) for line in training_data_lines[1:]]
 
-    for _ in range(0, args.num_iterations):
-        nn_error: NN_Error = NN_Error()
-        for i in range(0, num_of_instances):
-            output = nn.forward_pass(np_training_instances[i])
-            if i == 0:
-                print(output)
-            nn_error.add(output, class_instances[i])
-            nn.back_propagation(class_instances[i])
-        print(f"Average error training set ({num_of_instances} instances): {nn_error.get()}")
+    test_instances: List[List[float]] = [[float(x) for x in line[0:-1]] for line in test_data_lines[1:]]
+    np_test_instances = np.array(test_instances, dtype=float)
+    test_class_instances: List[float] = [float(line[-1]) for line in test_data_lines[1:]]
+
+    
+    num_of_training_instances = np_training_instances.shape[0]
+    num_of_test_instances = np_test_instances.shape[0]
+
+
+    nn_error: NN_Error = NN_Error()
+    for i in range(0, args.num_iterations):
+        print(f"At iteration {i+1}:")
+
+        i = i % num_of_training_instances
+        output = nn.forward_pass(np_training_instances[i])
+        nn.back_propagation(training_class_instances[i])
+
+        print(f"Forward pass output: {output:.4f}")
+        
+        nn_error.clear()
+        for j in range(0, num_of_training_instances):
+            predicted = nn.forward_pass(np_training_instances[j])
+            nn_error.add(predicted, training_class_instances[j])
+
+        print(f"Average squared error on training set ({num_of_training_instances} instances): {nn_error.get():.4f}")
+
+        nn_error.clear()
+        for j in range(0, num_of_test_instances):
+            predicted = nn.forward_pass(np_test_instances[j])
+            nn_error.add(predicted, test_class_instances[j])
+
+        print(f"Average squared error on test set ({num_of_test_instances} instances): {nn_error.get():.4f}")
+        print()
 
     
 
