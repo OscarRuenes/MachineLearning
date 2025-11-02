@@ -39,18 +39,24 @@ except:
 
 class NeuralNetworkNode:
     def __init__(self, num_inputs: int):
+        # How many inputs a node has
         self.num_inputs = num_inputs
+        # The weights corresponding to each input
         self.weights = np.zeros(num_inputs)
+        # Bias associated with Node
         self.bias = 0
 
     def activate(self, inputs: np.ndarray) -> float:
+        # Simple dot product
         z = np.dot(self.weights, inputs) + 1 * self.bias
+        # Activation Function
         return self.sigmoid(z)
     
     def sigmoid(self, x):
         return 1 / (1 + np.exp(-x))
     
     def update(self, new_weights, new_bias):
+        # "Nudge" the weights accordingly
         self.weights -= new_weights
         self.bias -= new_bias
     
@@ -64,7 +70,6 @@ class NeuralNetwork:
 
         self.layers: List[List[NeuralNetworkNode]] = self.create_layers()
         self.layer_inputs: List[np.ndarray] = [np.zeros(num_of_inputs)] + [np.zeros(num_hidden_nodes) for _ in range(num_hidden_layers)] + [np.zeros(1)]
-        print(f"Created a inputs array with shape {self.layer_inputs}")
 
     def create_layers(self) -> List[List[NeuralNetworkNode]]:
         layers: List[List[NeuralNetworkNode]] = []
@@ -81,7 +86,6 @@ class NeuralNetwork:
         # Output layer
         layers.append([NeuralNetworkNode(prev_inputs)])
 
-        print(f"Created a nn with {len(layers)} layers with {len(layers[0])} nodes in each hidden layer")
         return layers
 
     def forward_pass(self, input_data) -> float:
@@ -211,8 +215,7 @@ def main():
             predicted = nn.forward_pass(np_test_instances[j])
             nn_error.add(predicted, test_class_instances[j])
 
-        print(f"Average squared error on test set ({num_of_test_instances} instances): {nn_error.get():.4f}")
-        print()
+        print(f"Average squared error on test set ({num_of_test_instances} instances): {nn_error.get():.4f}\n")
 
     
 

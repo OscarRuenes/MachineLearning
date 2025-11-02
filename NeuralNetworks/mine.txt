@@ -1,0 +1,49 @@
+At iteration 1:
+Forward pass output: 0.5000
+Average squared error on training set (100 instances): 0.2090
+Average squared error on test set (400 instances): 0.2068
+
+At iteration 2:
+Forward pass output: 0.3630
+Average squared error on training set (100 instances): 0.2117
+Average squared error on test set (400 instances): 0.2023
+
+At iteration 3:
+Forward pass output: 0.2377
+Average squared error on training set (100 instances): 0.2177
+Average squared error on test set (400 instances): 0.2038
+
+At iteration 4:
+Forward pass output: 0.2230
+Average squared error on training set (100 instances): 0.2254
+Average squared error on test set (400 instances): 0.2079
+
+At iteration 5:
+Forward pass output: 0.2526
+Average squared error on training set (100 instances): 0.2340
+Average squared error on test set (400 instances): 0.2124
+
+At iteration 6:
+Forward pass output: 0.1303
+Average squared error on training set (100 instances): 0.2379
+Average squared error on test set (400 instances): 0.2150
+
+At iteration 7:
+Forward pass output: 0.1183
+Average squared error on training set (100 instances): 0.2402
+Average squared error on test set (400 instances): 0.2164
+
+At iteration 8:
+Forward pass output: 0.1775
+Average squared error on training set (100 instances): 0.2459
+Average squared error on test set (400 instances): 0.2201
+
+At iteration 9:
+Forward pass output: 0.1016
+Average squared error on training set (100 instances): 0.2477
+Average squared error on test set (400 instances): 0.2214
+
+At iteration 10:
+Forward pass output: 0.1475
+Average squared error on training set (100 instances): 0.2510
+Average squared error on test set (400 instances): 0.2238
