@@ -1,5 +1,5 @@
 '''
-Author: Lalith Vennapusa, Oscar Ruenes
+Group Members: Lalith Vennapusa, Oscar Ruenes
 Date: 10/30/2025
 Title: CS 4375 Assignment 4 Neural Networks
 Desc: Neural network implementation trained on given learning rate, training/testing data, 
@@ -31,7 +31,6 @@ def load_data(path: str):
         print(f"Error loading data from {path}: {e}")
         exit(1)
 
-# get training and testing data, labels in input_labels, train_x has features, train_y has classifications
 input_labels, train_X, train_y = load_data(args.train_path)
 _, test_X, test_y = load_data(args.test_path)
 
@@ -39,12 +38,12 @@ num_inputs = len(input_labels)
 
 class NeuralNetworkNode:
     def __init__(self, num_inputs: int):
-        # +1 for bias
+        self.num_inputs = num_inputs
         self.weights = [0.0 for _ in range(num_inputs + 1)]
 
     def activate(self, inputs: List[float]) -> float:
-        # +1 for bias
         inputs = inputs + [1.0]
+        assert len(inputs) == len(self.weights)
         z = sum(w * x for w, x in zip(self.weights, inputs))
         return 1.0 / (1.0 + math.exp(-z))
 
@@ -53,57 +52,86 @@ class NeuralNetworkNode:
         for i in range(len(self.weights)):
             self.weights[i] -= learning_rate * delta * inputs[i]
 
-class NeuralNetwork:
-    def __init__(self, num_inputs, num_hidden_layers, num_hidden_nodes, learning_rate):
-        self.num_hidden_layers = num_hidden_layers
-        self.num_hidden_nodes = num_hidden_nodes
-        self.learning_rate = learning_rate
+class NeuralNetworkLayer:
+    def __init__(self, num_nodes: int, num_inputs: int):
+        self.nodes: List[NeuralNetworkNode] = [NeuralNetworkNode(num_inputs) for _ in range(num_nodes)]
+        self.activations: List[float] = [0.0 for _ in range(num_nodes)]
+        self.deltas: List[float] = [0.0 for _ in range(num_nodes)]
+        self.num_nodes = num_nodes
 
-        # Create layers
-        self.layers: List[List[NeuralNetworkNode]] = []
+    def process_input(self, input: List[float]):
+        for i in range(0, len(self.activations)):
+            self.activations[i] = self.nodes[i].activate(input)
+
+    def update_layer(self, inputs: List[float], learning_rate):
+        for i in range(0, len(self.activations)):
+            self.nodes[i].update_weights(inputs, self.deltas[i], learning_rate)
+
+
+    
+class NeuralNetwork: 
+    def __init__(self, num_inputs: int, num_hidden_layers: int, num_hidden_nodes: int, learning_rate: float):
+        self.num_layers: int = num_hidden_layers+2
+        self.num_hidden_nodes: int = num_hidden_nodes
+        self.learning_rate: float = learning_rate
+        self.num_inputs: int = num_inputs
+
+        self.layers: List[NeuralNetworkLayer] = [NeuralNetworkLayer(self.num_inputs, 0)]
+
         prev_size = num_inputs
         for _ in range(num_hidden_layers):
-            layer = [NeuralNetworkNode(prev_size) for _ in range(num_hidden_nodes)]
+            layer = NeuralNetworkLayer(num_hidden_nodes, prev_size)
             self.layers.append(layer)
             prev_size = num_hidden_nodes
-        # Output layer (1 node)
-        self.layers.append([NeuralNetworkNode(prev_size)])
 
-    def forward_pass(self, x: List[float]) -> List[List[float]]:
-        activations = [x]
-        for layer in self.layers:
-            layer_act = [node.activate(activations[-1]) for node in layer]
-            activations.append(layer_act)
-        return activations
+        self.layers.append(NeuralNetworkLayer(1, prev_size))
 
-    def back_propagation(self, activations: List[List[float]], y_actual: float):
-        deltas = []
+    def get_output(self)-> float:
+        return self.layers[-1].activations[0]
 
-        output = activations[-1][0]
-        delta_output = (output - y_actual) * output * (1 - output)
-        deltas.append([delta_output])
+    def forward_pass(self, input: List[float]) -> float:
+        assert len(input) == self.layers[0].num_nodes
+        self.layers[0].activations = input
+        for i in range(1, len(self.layers)):
+            self.layers[i].process_input(self.layers[i-1].activations)
+        return self.get_output()
+    
+    def output_back_prop(self, y_actual: float):
+        activation: float = self.get_output()
+        self.layers[-1].deltas[0] = activation * (1 - activation) * (activation - y_actual)
 
-        # Hidden layer deltas (backwards)
-        for l in reversed(range(self.num_hidden_layers)):
-            layer = self.layers[l]
-            next_layer = self.layers[l + 1]
-            next_delta = deltas[0]
-            delta = []
-            for i, node in enumerate(layer):
-                currSum = sum(next_delta[k] * next_layer[k].weights[i] for k in range(len(next_layer)))
-                delta_i = currSum * activations[l+1][i] * (1 - activations[l+1][i])
-                delta.append(delta_i)
-            deltas.insert(0, delta)
+    def get_hidden_delta(self, layer: int, node_index: int) -> float:
+        delta: float = 0.0
 
-        # weight updates
-        for l, layer in enumerate(self.layers):
-            for i, node in enumerate(layer):
-                node.update_weights(activations[l], deltas[l][i], self.learning_rate)
+        current_layer = self.layers[layer]
+        next_forward_layer = self.layers[layer+1]
+        for k in range(0, next_forward_layer.num_nodes):
+            current_node = next_forward_layer.nodes[k]
+            delta += current_node.weights[node_index] * next_forward_layer.deltas[k]
 
+        delta = delta * current_layer.activations[node_index] * (1 - current_layer.activations[node_index])
+        return delta
+
+    def hidden_back_prop(self, layer: int):
+        current_layer: NeuralNetworkLayer = self.layers[layer]
+
+        for i in range(0, current_layer.num_nodes):
+            current_layer.deltas[i] = self.get_hidden_delta(layer, i)
+        
+    def back_prop(self, y_actual: float):
+        self.output_back_prop(y_actual)
+        for i in range(self.num_layers - 2, 0, -1):
+            self.hidden_back_prop(i)
+
+        for i in range(1, len(self.layers)):
+            current_layer = self.layers[i]
+            prev_layer = self.layers[i-1]
+            current_layer.update_layer(prev_layer.activations, self.learning_rate)
+            
 def avg_squared_error(nn: NeuralNetwork, X: List[List[float]], y: List[float]) -> float:
     error_sum = 0.0
     for xi, yi in zip(X, y):
-        output = nn.forward_pass(xi)[-1][0]
+        output = nn.forward_pass(xi)
         error_sum += (yi - output) ** 2
     return error_sum / len(y)
 
@@ -121,10 +149,9 @@ def main():
         x_instance = train_X[idx]
         y_instance = train_y[idx]
 
-        activations = nn.forward_pass(x_instance)
-        nn.back_propagation(activations, y_instance)
+        forward_output = nn.forward_pass(x_instance)
+        nn.back_prop(y_instance)
 
-        forward_output = activations[-1][0]
         train_error = avg_squared_error(nn, train_X, train_y)
         test_error = avg_squared_error(nn, test_X, test_y)
 
