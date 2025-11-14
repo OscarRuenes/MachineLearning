@@ -30,7 +30,6 @@ def initialize_gaussians(data: List[float], num_gaussians: int):
     clusters = [[] for _ in range(num_gaussians)]
     for i in range(data_len):
         clusters[(i) % num_gaussians].append(data[i])
-    # Placeholder for Gaussian parameters initialization
     means = []
     variances = []
     priors = []
