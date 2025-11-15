@@ -49,12 +49,50 @@ def initialize_gaussians(data: List[float], num_gaussians: int):
     ]
     return gaussians
 
-def e_step():
-    # Placeholder for E-step implementation
-    pass
-def m_step():
-    # Placeholder for M-step implementation
-    pass
+#p(x) formula
+def gaussian_pdf(x, mean, variance):
+    return (1.0 / math.sqrt(2 * math.pi * variance)) * math.exp(-(x - mean) ** 2 / (2 * variance))
+
+
+def e_step(gaussians, data):
+    num_gaussians = len(gaussians)
+    data_len = len(data)
+
+    gamma = [[0.0] * num_gaussians for _ in range(data_len)]
+
+    for n, x in enumerate(data):
+        # compute denominator = sum_k π_k * N(x | μ_k, σ_k^2)
+        den = 0.0
+        numerators = []
+        for k in range(num_gaussians):
+            #get estimates
+            mean, variance, prior = gaussians[k][1]
+            #get each numerator
+            num = prior * gaussian_pdf(x, mean, variance)
+            numerators.append(num)
+            #denominator is the sum of all numerators
+            den += num
+        #list of gammas for each gaussian
+        for k in range(num_gaussians):
+            gamma[n][k] = numerators[k] / den
+    #list of lists of gammas, each sublist corresponds to a data point and each element in the sublist corresponds to a gaussian
+    return gamma
+
+
+def m_step(gaussians, data, gamma):
+    data_len = len(data)
+    num_gaussians = len(gaussians)
+    #update each gaussian's parameters
+    for k in range(num_gaussians):
+        gamma_sum = sum(gamma[n][k] for n in range(data_len))
+        #prior rule
+        prior = gamma_sum / data_len
+        #mean rule
+        mean = sum(gamma[n][k] * data[n] for n in range(data_len)) / gamma_sum
+        #variance rule
+        variance = sum(gamma[n][k] * (data[n] - mean) ** 2 for n in range(data_len)) / gamma_sum
+        gaussians[k][1] = (mean, variance, prior)
+
 
 def print_iteration(iteration: int, gaussians: List):
     print(f"After iteration {iteration}:")
@@ -72,11 +110,12 @@ def main():
     num_gaussians = int(args.num_gaussians)
     num_iterations = args.num_iterations
     gaussians = initialize_gaussians(data, num_gaussians)
-
+    gamma = None
     print_iteration(0, gaussians)
-
     for iteration in range(num_iterations):
-        e_step()
-        m_step()
+        #list of lists of gammas
+        gamma = e_step(gaussians, data)
+        #update gaussian parameters
+        m_step(gaussians, data, gamma)
         print_iteration(iteration + 1, gaussians)
 main()
